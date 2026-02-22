@@ -700,8 +700,8 @@ def merge_files():
                 return jsonify({'error': f'File {file.filename} has invalid extension', 'success': False}), 400
             
             # Save file temporarily
-            temp_dir = tempfile.mkdtemp()
-            temp_path = os.path.join(temp_dir, file.filename)
+            safe_filename = str(uuid.uuid4()) + "_" + file.filename
+            temp_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
             file.save(temp_path)
             
             try:
@@ -752,7 +752,11 @@ def merge_files():
                 print(f"Error processing {file.filename}: {str(e)[:200]}")
             finally:
                 # Cleanup
-                shutil.rmtree(temp_dir, ignore_errors=True)
+                try:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    except:
+                        pass
         
         if not all_sheets_data:
             return jsonify({'error': 'No data found in uploaded files. Please ensure files contain data and are in supported formats (.xlsx, .xls, .xlsm, .csv).', 'success': False}), 400
@@ -943,5 +947,6 @@ if __name__ == '__main__':
         import os
         port = int(os.environ.get("PORT", 10000))
         app.run(host='0.0.0.0', port=port)
+
 
 
