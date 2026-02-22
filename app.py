@@ -12,6 +12,7 @@ import traceback
 import re
 from collections import OrderedDict
 import warnings
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
@@ -19,9 +20,7 @@ warnings.filterwarnings('ignore')
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app, origins=["*"])
 
-# ---------- ERROR HANDLERS (return JSON instead of HTML) ----------
-from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
-
+# ---------- GLOBAL ERROR HANDLERS (return JSON instead of HTML) ----------
 @app.errorhandler(RequestEntityTooLarge)
 def handle_file_too_large(e):
     return jsonify({'error': 'File too large. Maximum size is 100MB.', 'success': False}), 413
@@ -40,7 +39,6 @@ def internal_error(e):
 
 @app.errorhandler(Exception)
 def handle_unhandled_exception(e):
-    # Log the error for debugging (visible in Render logs)
     print("Unhandled Exception:", str(e))
     traceback.print_exc()
     return jsonify({'error': 'An unexpected error occurred', 'success': False}), 500
@@ -631,7 +629,7 @@ def merge_files():
             if not allowed_file(file.filename):
                 return jsonify({'error': f'File {file.filename} has invalid extension', 'success': False}), 400
             
-            # Save file directly to persistent upload folder
+            # Save file directly to persistent upload folder (no tempfile)
             safe_filename = str(uuid.uuid4()) + "_" + file.filename
             temp_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
             file.save(temp_path)
