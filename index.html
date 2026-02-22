@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Multi-File Merge Tool | Professional Data Consolidation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-icon">
+                        <i class="fas fa-file-excel"></i>
+                    </div>
+                    <div class="logo-text">
+                        <h1>Excel Multi-File Merge Tool</h1>
+                        <p>Professional Excel consolidation with parallel processing for maximum speed</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div class="header-badge">
+                        <i class="fas fa-bolt"></i> Parallel Processing
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- File Upload Section -->
+            <section class="upload-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-cloud-upload-alt"></i> Upload Excel Files</h2>
+                    <div class="file-counter">
+                        <span id="fileCount">0</span> files selected
+                    </div>
+                </div>
+                <div class="upload-container">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">
+                            <i class="fas fa-file-excel"></i>
+                        </div>
+                        <h3 class="upload-text">Drag & Drop Excel Files Here</h3>
+                        <p class="upload-subtext">
+                            Supports .xlsx, .xls, .csv files. Parallel processing merges up to 4 files simultaneously for lightning speed.
+                        </p>
+                        <button class="upload-button" id="browseButton">
+                            <i class="fas fa-folder-open"></i> Browse Files
+                        </button>
+                        <input type="file" id="fileInput" multiple accept=".xlsx,.xls,.csv">
+                        <p class="upload-subtext" style="margin-top: 1.5rem; font-size: 0.9rem;">
+                            <i class="fas fa-bolt"></i> Optimized for large files - processes up to 100MB in seconds
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Summary Cards -->
+            <div class="summary-section">
+                <div class="summary-card">
+                    <div class="card-icon">
+                        <i class="fas fa-file"></i>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-value" id="summaryFileCount">0</div>
+                        <div class="card-label">Files Selected</div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon">
+                        <i class="fas fa-table"></i>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-value" id="summarySheetCount">0</div>
+                        <div class="card-label">Tables Detected</div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon">
+                        <i class="fas fa-list-ol"></i>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-value" id="summaryRowCount">0</div>
+                        <div class="card-label">Total Rows</div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon">
+                        <i class="fas fa-columns"></i>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-value" id="summaryColumnCount">0</div>
+                        <div class="card-label">Total Columns</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="controls-section">
+                <button class="btn btn-primary" id="mergeBtn">
+                    <i class="fas fa-cogs"></i> Merge Files
+                </button>
+                <button class="btn btn-secondary" id="resetBtn">
+                    <i class="fas fa-redo"></i> Reset Tool
+                </button>
+                <button class="btn btn-success" id="downloadBtn" disabled>
+                    <i class="fas fa-download"></i> Download Merged File
+                </button>
+                <div class="progress-bar" id="progressBar" style="display: none;">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <!-- Preview Section -->
+            <section class="preview-section">
+                <div class="preview-header">
+                    <h3><i class="fas fa-eye"></i> Data Preview</h3>
+                    <div class="sheet-selector">
+                        <label for="sheetSelect">View:</label>
+                        <select id="sheetSelect" class="sheet-select">
+                            <option value="all">Consolidated View (All Tables)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="preview-container">
+                    <div class="preview-info-bar">
+                        <span id="previewInfo">No data loaded. Please upload Excel files to begin.</span>
+                        <span id="previewCount">Showing 0 rows</span>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="preview-table" id="previewTable">
+                            <thead>
+                                <tr id="tableHeader">
+                                    <th>Source_File</th>
+                                    <!-- Headers will be added dynamically -->
+                                </tr>
+                            </thead>
+                            <tbody id="previewBody">
+                                <tr>
+                                    <td colspan="100" style="text-align: center; padding: 4rem; color: var(--text-light);">
+                                        <i class="fas fa-file-excel" style="font-size: 3rem; margin-bottom: 1rem; display: block;"></i>
+                                        <h3 style="margin-bottom: 0.5rem; color: var(--primary-blue);">No Data to Display</h3>
+                                        <p>Upload Excel files and click "Merge Files" to see the preview here</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Info Panel -->
+            <section class="info-panel">
+                <div class="info-tabs">
+                    <button class="info-tab active" data-tab="features">Key Features</button>
+                    <button class="info-tab" data-tab="performance">Performance</button>
+                    <button class="info-tab" data-tab="notes">Important Notes</button>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="features-tab">
+                        <ul class="info-list">
+                            <li>Advanced multi-row header detection (supports merged cells in headers)</li>
+                            <li>Preserves original column positioning and alignment exactly as in input files</li>
+                            <li>Intelligent column matching across multiple sheets</li>
+                            <li>Merged header cells in input files remain merged in output</li>
+                            <li>Missing values under any column are filled with zero for consistency</li>
+                            <li>Dark blue headers only - no background colors in data rows</li>
+                            <li>Blank columns are automatically removed from output</li>
+                            <li>The preview reflects the exact structure of the final merged Excel file</li>
+                        </ul>
+                    </div>
+                    <div class="tab-pane" id="performance-tab">
+                        <ul class="info-list">
+                            <li><strong>Parallel Processing:</strong> Processes up to 4 files simultaneously</li>
+                            <li><strong>Optimized Algorithms:</strong> Uses pandas for fast data handling</li>
+                            <li><strong>Memory Efficient:</strong> Processes files in chunks to handle large datasets</li>
+                            <li><strong>Fast Merging:</strong> Optimized merge algorithms for speed</li>
+                            <li><strong>Real-time Processing:</strong> Shows progress during file processing</li>
+                            <li><strong>Background Cleanup:</strong> Automatically cleans up temporary files</li>
+                        </ul>
+                        <div class="disclaimer-box">
+                            <h4><i class="fas fa-bolt"></i> Performance Tips</h4>
+                            <p>For best performance: 1) Keep files under 10MB each, 2) Limit to 20 files per batch, 3) Close other applications during large merges.</p>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="notes-tab">
+                        <ul class="info-list">
+                            <li>For best results, ensure your Excel files have consistent header structures</li>
+                            <li>The tool can handle up to 100MB of Excel data per batch</li>
+                            <li>Complex formatting and formulas may not be preserved in the merged output</li>
+                            <li>Large files may take longer to process - please be patient</li>
+                            <li>If you encounter issues, try splitting very large files into smaller ones</li>
+                            <li>Always verify the merged data matches your expectations before use</li>
+                            <li>Keep a backup of your original files before processing</li>
+                            <li>Multi-row headers are fully supported and preserved</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- FAQ Section -->
+            <section class="info-panel">
+                <div class="section-header">
+                    <h2><i class="fas fa-question-circle"></i> Frequently Asked Questions (FAQs)</h2>
+                </div>
+                <div class="tab-content">
+                    <div class="faq-container">
+                        <div class="faq-item">
+                            <h3>1. What types of Excel files can I merge using this tool?</h3>
+                            <p>You can merge any Excel files such as attendance sheets, salary sheets, registers, bank statements, MIS reports, or custom internal reports. The tool is designed to handle different formats, column orders, and structures, not just identical templates.</p>
+                        </div>
+                        <div class="faq-item">
+                            <h3>2. Do all Excel files need to have the same columns or format?</h3>
+                            <p>No. Files do not need to follow the same format. The tool intelligently detects headers, aligns similar columns, and merges data logically. However, extremely unstructured files may require manual review after merging.</p>
+                        </div>
+                        <div class="faq-item">
+                            <h3>3. How does the tool handle different or multi-row headers?</h3>
+                            <p>The tool automatically scans the file to identify the actual data headers, even if:
+                            • There are title rows
+                            • Headers span multiple rows
+                            • Cells are merged
+                            Non-data rows like titles or notes are ignored or handled separately during the merge.</p>
+                        </div>
+                        <div class="faq-item">
+                            <h3>4. Will the original data in my Excel files be changed?</h3>
+                            <p>No. Your uploaded files are never modified. The tool only creates a new merged Excel file, keeping all original data intact.</p>
+                        </div>
+                        <div class="faq-item">
+                            <h3>5. What happens if some columns exist in one file but not in others?</h3>
+                            <p>The tool creates a combined structure that includes all detected columns. If a column is missing in a particular file, the corresponding cells in the merged output will remain blank for those rows.</p>
+                        </div>
+                        <div class="faq-item">
+                            <h3>6. Is this tool suitable for large or professional datasets?</h3>
+                            <p>Yes. The tool is built for real-world business data, including multi-sheet files, varying formats, and large datasets. Still, users should always review the merged output before using it for reporting or compliance purposes.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Statistics Display -->
+            <div class="stats-container">
+                <div class="stats-header">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Statistics</span>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="totalSheetsCounter">0</div>
+                    <div class="stat-label">Total Sheets Merged (All Time)</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="todaySheetsCounter">0</div>
+                    <div class="stat-label">Sheets Merged Today</div>
+                    <div class="stat-date" id="currentDate"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="main-footer">
+            <div class="footer-content">
+                <div class="copyright">
+                    © 2023 Excel Multi-File Merge Tool • Version 7.0 • Optimized Edition
+                </div>
+                <div class="footer-links">
+                    <a href="#"><i class="fas fa-question-circle"></i> Help</a>
+                    <a href="#"><i class="fas fa-envelope"></i> Contact</a>
+                    <a href="#"><i class="fas fa-shield-alt"></i> Privacy</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Download Modal -->
+    <div class="modal-overlay" id="reportModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-download"></i> Download Merged Excel File</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-label">Files Selected</div>
+                        <div class="summary-value" id="modalFileCount">0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Tables Detected</div>
+                        <div class="summary-value" id="modalSheetCount">0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Rows</div>
+                        <div class="summary-value" id="modalRowCount">0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Columns</div>
+                        <div class="summary-value" id="modalColumnCount">0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Processing Time</div>
+                        <div class="summary-value" id="modalTime">0s</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">File Size</div>
+                        <div class="summary-value" id="modalFileSize">0 KB</div>
+                    </div>
+                </div>
+                
+                <div class="disclaimer-box">
+                    <h4><i class="fas fa-shield-alt"></i> Data Safety & Disclaimer</h4>
+                    <p>Your merged file preserves original header structure with merged cells. Please verify the merged data before using for critical reporting.</p>
+                </div>
+                
+                <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
+                    <button class="btn btn-success" id="confirmDownload">
+                        <i class="fas fa-download"></i> Download Merged File
+                    </button>
+                    <button class="btn btn-secondary" id="closeModalBtn">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
