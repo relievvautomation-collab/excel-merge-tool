@@ -676,7 +676,8 @@ def merge_files():
         parallel_results = read_excel_parallel(file_paths)
 
         for idx, sheets_data in enumerate(parallel_results):
-            if sheets_data:
+            # FIX 1: Check safely
+            if sheets_data is not None and len(sheets_data) > 0:
                 for sheet_data in sheets_data:
                     sheet_name = sheet_data['sheet_name']
                     key = f"{file_names[idx]} - {sheet_name}"
@@ -696,18 +697,20 @@ def merge_files():
                         total_tables += 1
                         df = table_data.get('dataframe', pd.DataFrame())
 
-                        sheet_row_count = len(df)
-                        sheet_column_count = len(df.columns)
+                        # FIX 2: Check safely
+                        if df is not None and not df.empty:
+                            sheet_row_count = len(df)
+                            sheet_column_count = len(df.columns)
 
-                        total_rows += sheet_row_count
-                        total_columns = max(total_columns, sheet_column_count)
+                            total_rows += sheet_row_count
+                            total_columns = max(total_columns, sheet_column_count)
 
-                        sheet_names_info[key]['table_count'] += 1
-                        sheet_names_info[key]['row_count'] += sheet_row_count
-                        sheet_names_info[key]['column_count'] = max(
-                            sheet_names_info[key]['column_count'],
-                            sheet_column_count
-                        )
+                            sheet_names_info[key]['table_count'] += 1
+                            sheet_names_info[key]['row_count'] += sheet_row_count
+                            sheet_names_info[key]['column_count'] = max(
+                                sheet_names_info[key]['column_count'],
+                                sheet_column_count
+                            )
 
         if not all_sheets_data:
             return jsonify({'error': 'No data found in uploaded files. Please ensure files contain data and are in supported formats (.xlsx, .xls, .xlsm, .csv).', 'success': False}), 400
