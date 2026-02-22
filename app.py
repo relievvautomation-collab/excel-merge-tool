@@ -19,7 +19,33 @@ warnings.filterwarnings('ignore')
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app, origins=["*"])
 
-# Configuration
+# ---------- ERROR HANDLERS (return JSON instead of HTML) ----------
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(e):
+    return jsonify({'error': 'File too large. Maximum size is 100MB.', 'success': False}), 413
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({'error': 'Resource not found', 'success': False}), 404
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return jsonify({'error': 'Method not allowed', 'success': False}), 405
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({'error': 'Internal server error', 'success': False}), 500
+
+@app.errorhandler(Exception)
+def handle_unhandled_exception(e):
+    # Log the error for debugging (visible in Render logs)
+    print("Unhandled Exception:", str(e))
+    traceback.print_exc()
+    return jsonify({'error': 'An unexpected error occurred', 'success': False}), 500
+
+# ---------- CONFIGURATION ----------
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 ALLOWED_EXTENSIONS = {'xlsx', 'xls', 'xlsm', 'csv'}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
