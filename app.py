@@ -673,44 +673,63 @@ def merge_files():
 
         # PARALLEL READ ALL FILES HERE
         print("Reading files in parallel...")
-        parallel_results = read_excel_parallel(file_paths)
+        try:
+            parallel_results = read_excel_parallel(file_paths)
+        except Exception as e:
+            return jsonify({'error': f'Parallel processing error: {str(e)}', 'success': False}), 500
+
+        # Validate parallel_results is a list
+        if not isinstance(parallel_results, list):
+            return jsonify({'error': 'Parallel processor did not return a list', 'success': False}), 500
 
         for idx, sheets_data in enumerate(parallel_results):
-            # FIX 1: Check safely
-            if sheets_data is not None and len(sheets_data) > 0:
-                for sheet_data in sheets_data:
-                    sheet_name = sheet_data['sheet_name']
-                    key = f"{file_names[idx]} - {sheet_name}"
+            # Ensure sheets_data is a list
+            if sheets_data is None:
+                continue
+            if not isinstance(sheets_data, list):
+                return jsonify({'error': f'Invalid data format for file {file_names[idx]}: expected list, got {type(sheets_data).__name__}', 'success': False}), 500
+            if len(sheets_data) == 0:
+                continue
 
-                    all_sheets_data.append(sheet_data)
+            for sheet_data in sheets_data:
+                # Validate sheet_data is a dict and has required keys
+                if not isinstance(sheet_data, dict):
+                    return jsonify({'error': f'Invalid sheet data format for file {file_names[idx]}: expected dict, got {type(sheet_data).__name__}', 'success': False}), 500
+                if 'sheet_name' not in sheet_data or 'tables' not in sheet_data:
+                    return jsonify({'error': f'Missing required keys in sheet data for file {file_names[idx]}', 'success': False}), 500
 
-                    if key not in sheet_names_info:
-                        sheet_names_info[key] = {
-                            'filename': file_names[idx],
-                            'sheet_name': sheet_name,
-                            'table_count': 0,
-                            'row_count': 0,
-                            'column_count': 0
-                        }
+                sheet_name = sheet_data['sheet_name']
+                key = f"{file_names[idx]} - {sheet_name}"
 
-                    for table_data in sheet_data['tables']:
-                        total_tables += 1
-                        df = table_data.get('dataframe', pd.DataFrame())
+                all_sheets_data.append(sheet_data)
 
-                        # FIX 2: Check safely
-                        if df is not None and not df.empty:
-                            sheet_row_count = len(df)
-                            sheet_column_count = len(df.columns)
+                if key not in sheet_names_info:
+                    sheet_names_info[key] = {
+                        'filename': file_names[idx],
+                        'sheet_name': sheet_name,
+                        'table_count': 0,
+                        'row_count': 0,
+                        'column_count': 0
+                    }
 
-                            total_rows += sheet_row_count
-                            total_columns = max(total_columns, sheet_column_count)
+                for table_data in sheet_data['tables']:
+                    total_tables += 1
+                    df = table_data.get('dataframe', pd.DataFrame())
 
-                            sheet_names_info[key]['table_count'] += 1
-                            sheet_names_info[key]['row_count'] += sheet_row_count
-                            sheet_names_info[key]['column_count'] = max(
-                                sheet_names_info[key]['column_count'],
-                                sheet_column_count
-                            )
+                    # Check df is a DataFrame and not empty
+                    if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
+                        sheet_row_count = len(df)
+                        sheet_column_count = len(df.columns)
+
+                        total_rows += sheet_row_count
+                        total_columns = max(total_columns, sheet_column_count)
+
+                        sheet_names_info[key]['table_count'] += 1
+                        sheet_names_info[key]['row_count'] += sheet_row_count
+                        sheet_names_info[key]['column_count'] = max(
+                            sheet_names_info[key]['column_count'],
+                            sheet_column_count
+                        )
 
         if not all_sheets_data:
             return jsonify({'error': 'No data found in uploaded files. Please ensure files contain data and are in supported formats (.xlsx, .xls, .xlsm, .csv).', 'success': False}), 400
