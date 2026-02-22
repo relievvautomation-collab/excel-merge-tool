@@ -1,8 +1,6 @@
 import os
 import uuid
-import json
 import pandas as pd
-from parallel_processor import read_excel_parallel
 import numpy as np
 from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
@@ -25,7 +23,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # ---------- GLOBAL ERROR HANDLERS (return JSON instead of HTML) ----------
 @app.errorhandler(RequestEntityTooLarge)
 def handle_file_too_large(e):
-    return jsonify({'error': 'Total upload size exceeds 200MB limit. Please reduce file sizes.', 'success': False}), 413
+    return jsonify({'error': 'File too large. Maximum size is 100MB.', 'success': False}), 413
 
 @app.errorhandler(404)
 def not_found(e):
@@ -48,7 +46,7 @@ def handle_unhandled_exception(e):
 # ---------- CONFIGURATION ----------
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 ALLOWED_EXTENSIONS = {'xlsx', 'xls', 'xlsm', 'csv'}
-MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB total request size
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -58,33 +56,12 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 # Store processed files temporarily
 processed_files = {}
 
-# Statistics file for persistence
-STATS_FILE = os.path.join(os.getcwd(), 'stats.json')
-
-def load_stats():
-    """Load global statistics from JSON file."""
-    try:
-        if os.path.exists(STATS_FILE):
-            with open(STATS_FILE, 'r') as f:
-                return json.load(f)
-    except Exception as e:
-        print("Could not load stats, using defaults:", e)
-    return {
-        "totalSheetsMerged": 0,
-        "todaySheetsMerged": 0,
-        "lastResetDate": datetime.now().strftime("%Y-%m-%d")
-    }
-
-def save_stats(stats):
-    """Save global statistics to JSON file."""
-    try:
-        with open(STATS_FILE, 'w') as f:
-            json.dump(stats, f)
-    except Exception as e:
-        print("Could not save stats:", e)
-
-# Global statistics (shared across all users, persisted)
-global_stats = load_stats()
+# Global statistics (shared across all users)
+global_stats = {
+    "totalSheetsMerged": 0,
+    "todaySheetsMerged": 0,
+    "lastResetDate": datetime.now().strftime("%Y-%m-%d")
+}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -298,19 +275,13 @@ def read_excel_file_simple(file_path, filename):
         return []
 
 def read_csv_file_advanced(file_path, filename):
-    """Advanced CSV reader with encoding detection and chunking for large files"""
+    """Advanced CSV reader with encoding detection"""
     try:
         encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'utf-16-le', 'utf-16-be']
         
-        df = None
         for encoding in encodings:
             try:
-                # Use chunksize to handle large CSV files without loading everything into memory
-                chunks = []
-                for chunk in pd.read_csv(file_path, encoding=encoding, dtype=str, on_bad_lines='skip', chunksize=10000):
-                    chunks.append(chunk)
-                if chunks:
-                    df = pd.concat(chunks, ignore_index=True)
+                df = pd.read_csv(file_path, encoding=encoding, dtype=str, on_bad_lines='skip')
                 break
             except UnicodeDecodeError:
                 continue
@@ -318,15 +289,11 @@ def read_csv_file_advanced(file_path, filename):
                 continue
         else:
             try:
-                chunks = []
-                for chunk in pd.read_csv(file_path, dtype=str, on_bad_lines='skip', chunksize=10000):
-                    chunks.append(chunk)
-                if chunks:
-                    df = pd.concat(chunks, ignore_index=True)
+                df = pd.read_csv(file_path, dtype=str, on_bad_lines='skip')
             except:
                 return []
         
-        if df is None or df.empty:
+        if df.empty:
             return []
         
         df = df.fillna('')
@@ -654,83 +621,71 @@ def merge_files():
         total_columns = 0
         sheet_names_info = {}
         
-        # SAVE ALL FILE PATHS FIRST
-        file_paths = []
-        file_names = []
-
+        # Process each file
         for file in files:
             if not file or file.filename == '':
                 continue
+                
             if not allowed_file(file.filename):
                 return jsonify({'error': f'File {file.filename} has invalid extension', 'success': False}), 400
-
+            
+            # Save file directly to persistent upload folder (no tempfile)
             safe_filename = str(uuid.uuid4()) + "_" + file.filename
             temp_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
             file.save(temp_path)
-
-            file_paths.append(temp_path)
-            file_names.append(file.filename)
-
-        # PARALLEL READ ALL FILES HERE
-        print("Reading files in parallel...")
-        try:
-            parallel_results = read_excel_parallel(file_paths)
-        except Exception as e:
-            return jsonify({'error': f'Parallel processing error: {str(e)}', 'success': False}), 500
-
-        # Validate parallel_results is a list
-        if not isinstance(parallel_results, list):
-            return jsonify({'error': 'Parallel processor did not return a list', 'success': False}), 500
-
-        for idx, sheets_data in enumerate(parallel_results):
-            # Ensure sheets_data is a list
-            if sheets_data is None:
-                continue
-            if not isinstance(sheets_data, list):
-                return jsonify({'error': f'Invalid data format for file {file_names[idx]}: expected list, got {type(sheets_data).__name__}', 'success': False}), 500
-            if len(sheets_data) == 0:
-                continue
-
-            for sheet_data in sheets_data:
-                # Validate sheet_data is a dict and has required keys
-                if not isinstance(sheet_data, dict):
-                    return jsonify({'error': f'Invalid sheet data format for file {file_names[idx]}: expected dict, got {type(sheet_data).__name__}', 'success': False}), 500
-                if 'sheet_name' not in sheet_data or 'tables' not in sheet_data:
-                    return jsonify({'error': f'Missing required keys in sheet data for file {file_names[idx]}', 'success': False}), 500
-
-                sheet_name = sheet_data['sheet_name']
-                key = f"{file_names[idx]} - {sheet_name}"
-
-                all_sheets_data.append(sheet_data)
-
-                if key not in sheet_names_info:
-                    sheet_names_info[key] = {
-                        'filename': file_names[idx],
-                        'sheet_name': sheet_name,
-                        'table_count': 0,
-                        'row_count': 0,
-                        'column_count': 0
-                    }
-
-                for table_data in sheet_data['tables']:
-                    total_tables += 1
-                    df = table_data.get('dataframe', pd.DataFrame())
-
-                    # Check df is a DataFrame and not empty
-                    if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
-                        sheet_row_count = len(df)
-                        sheet_column_count = len(df.columns)
-
-                        total_rows += sheet_row_count
-                        total_columns = max(total_columns, sheet_column_count)
-
-                        sheet_names_info[key]['table_count'] += 1
-                        sheet_names_info[key]['row_count'] += sheet_row_count
-                        sheet_names_info[key]['column_count'] = max(
-                            sheet_names_info[key]['column_count'],
-                            sheet_column_count
-                        )
-
+            
+            try:
+                print(f"Processing: {file.filename}")
+                
+                sheets_data = extract_file_data(temp_path, file.filename)
+                
+                if sheets_data:
+                    for sheet_data in sheets_data:
+                        sheet_name = sheet_data['sheet_name']
+                        key = f"{file.filename} - {sheet_name}"
+                        
+                        all_sheets_data.append(sheet_data)
+                        
+                        if key not in sheet_names_info:
+                            sheet_names_info[key] = {
+                                'filename': file.filename,
+                                'sheet_name': sheet_name,
+                                'table_count': 0,
+                                'row_count': 0,
+                                'column_count': 0
+                            }
+                        
+                        for table_data in sheet_data['tables']:
+                            total_tables += 1
+                            df = table_data.get('dataframe', pd.DataFrame())
+                            
+                            sheet_row_count = len(df)
+                            sheet_column_count = len(df.columns)
+                            
+                            total_rows += sheet_row_count
+                            total_columns = max(total_columns, sheet_column_count)
+                            
+                            sheet_names_info[key]['table_count'] += 1
+                            sheet_names_info[key]['row_count'] += sheet_row_count
+                            sheet_names_info[key]['column_count'] = max(
+                                sheet_names_info[key]['column_count'], 
+                                sheet_column_count
+                            )
+                    
+                    print(f"  Found {len(sheets_data)} sheets with {total_tables} tables")
+                else:
+                    print(f"  No data found in {file.filename}")
+                
+            except Exception as e:
+                print(f"Error processing {file.filename}: {str(e)[:200]}")
+            finally:
+                # Clean up the uploaded file after processing
+                try:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except:
+                    pass
+        
         if not all_sheets_data:
             return jsonify({'error': 'No data found in uploaded files. Please ensure files contain data and are in supported formats (.xlsx, .xls, .xlsm, .csv).', 'success': False}), 400
         
@@ -791,8 +746,7 @@ def merge_files():
             'sheet_info': sheet_names_info
         }
 
-        # Update global statistics (persisted)
-        global global_stats
+        # Update global statistics
         today = datetime.now().strftime("%Y-%m-%d")
         if global_stats["lastResetDate"] != today:
             global_stats["todaySheetsMerged"] = 0
@@ -800,7 +754,6 @@ def merge_files():
 
         global_stats["totalSheetsMerged"] += total_tables
         global_stats["todaySheetsMerged"] += total_tables
-        save_stats(global_stats)
 
         return jsonify({
             'success': True,
@@ -929,3 +882,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+
