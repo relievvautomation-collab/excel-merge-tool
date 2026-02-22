@@ -654,71 +654,61 @@ def merge_files():
         total_columns = 0
         sheet_names_info = {}
         
-        # Process each file
+        # SAVE ALL FILE PATHS FIRST
+        file_paths = []
+        file_names = []
+
         for file in files:
             if not file or file.filename == '':
                 continue
-                
             if not allowed_file(file.filename):
                 return jsonify({'error': f'File {file.filename} has invalid extension', 'success': False}), 400
-            
-            # Save file directly to persistent upload folder
+
             safe_filename = str(uuid.uuid4()) + "_" + file.filename
             temp_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
             file.save(temp_path)
-            
-            try:
-                print(f"Processing: {file.filename}")
-                
-                sheets_data = extract_file_data(temp_path, file.filename)
-                
-                if sheets_data:
-                    for sheet_data in sheets_data:
-                        sheet_name = sheet_data['sheet_name']
-                        key = f"{file.filename} - {sheet_name}"
-                        
-                        all_sheets_data.append(sheet_data)
-                        
-                        if key not in sheet_names_info:
-                            sheet_names_info[key] = {
-                                'filename': file.filename,
-                                'sheet_name': sheet_name,
-                                'table_count': 0,
-                                'row_count': 0,
-                                'column_count': 0
-                            }
-                        
-                        for table_data in sheet_data['tables']:
-                            total_tables += 1
-                            df = table_data.get('dataframe', pd.DataFrame())
-                            
-                            sheet_row_count = len(df)
-                            sheet_column_count = len(df.columns)
-                            
-                            total_rows += sheet_row_count
-                            total_columns = max(total_columns, sheet_column_count)
-                            
-                            sheet_names_info[key]['table_count'] += 1
-                            sheet_names_info[key]['row_count'] += sheet_row_count
-                            sheet_names_info[key]['column_count'] = max(
-                                sheet_names_info[key]['column_count'], 
-                                sheet_column_count
-                            )
-                    
-                    print(f"  Found {len(sheets_data)} sheets with {total_tables} tables")
-                else:
-                    print(f"  No data found in {file.filename}")
-                
-            except Exception as e:
-                print(f"Error processing {file.filename}: {str(e)[:200]}")
-            finally:
-                # Clean up the uploaded file after processing
-                try:
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
-                except:
-                    pass
-        
+
+            file_paths.append(temp_path)
+            file_names.append(file.filename)
+
+        # PARALLEL READ ALL FILES HERE
+        print("Reading files in parallel...")
+        parallel_results = read_excel_parallel(file_paths)
+
+        for idx, sheets_data in enumerate(parallel_results):
+            if sheets_data:
+                for sheet_data in sheets_data:
+                    sheet_name = sheet_data['sheet_name']
+                    key = f"{file_names[idx]} - {sheet_name}"
+
+                    all_sheets_data.append(sheet_data)
+
+                    if key not in sheet_names_info:
+                        sheet_names_info[key] = {
+                            'filename': file_names[idx],
+                            'sheet_name': sheet_name,
+                            'table_count': 0,
+                            'row_count': 0,
+                            'column_count': 0
+                        }
+
+                    for table_data in sheet_data['tables']:
+                        total_tables += 1
+                        df = table_data.get('dataframe', pd.DataFrame())
+
+                        sheet_row_count = len(df)
+                        sheet_column_count = len(df.columns)
+
+                        total_rows += sheet_row_count
+                        total_columns = max(total_columns, sheet_column_count)
+
+                        sheet_names_info[key]['table_count'] += 1
+                        sheet_names_info[key]['row_count'] += sheet_row_count
+                        sheet_names_info[key]['column_count'] = max(
+                            sheet_names_info[key]['column_count'],
+                            sheet_column_count
+                        )
+
         if not all_sheets_data:
             return jsonify({'error': 'No data found in uploaded files. Please ensure files contain data and are in supported formats (.xlsx, .xls, .xlsm, .csv).', 'success': False}), 400
         
@@ -917,4 +907,3 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-
