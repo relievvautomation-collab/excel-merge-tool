@@ -61,31 +61,16 @@ function init() {
 }
 
 // Load user data from localStorage
-function loadUserData() {
-    const savedData = localStorage.getItem('excelMergeToolData');
-    if (savedData) {
-        try {
-            userData = JSON.parse(savedData);
-            
-            // Check if it's a new day
-            const today = new Date().toDateString();
-            if (userData.lastResetDate !== today) {
-                userData.todaySheetsMerged = 0;
-                userData.lastResetDate = today;
-                saveUserData();
-            }
-        } catch (e) {
-            console.log('Could not load user data, using defaults');
-        }
+async function loadUserData() {
+    try {
+        const res = await fetch('/stats');
+        const data = await res.json();
+        userData.totalSheetsMerged = data.totalSheetsMerged || 0;
+        userData.todaySheetsMerged = data.todaySheetsMerged || 0;
+        updateStatisticsCounters();
+    } catch(e) {
+        console.log("Stats fetch failed");
     }
-    
-    updateStatisticsCounters();
-}
-
-// Save user data to localStorage
-function saveUserData() {
-    localStorage.setItem('excelMergeToolData', JSON.stringify(userData));
-    updateStatisticsCounters();
 }
 
 // Update statistics counters
@@ -878,3 +863,4 @@ function showNotification(message, type = 'info') {
 // Initialize the application
 
 init();
+
