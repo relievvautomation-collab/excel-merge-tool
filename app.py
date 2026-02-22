@@ -922,6 +922,10 @@ def cleanup():
         traceback.print_exc()
         return jsonify({'error': str(e)[:200], 'success': False}), 500
 
+@app.route('/stats', methods=['GET'])
+def get_stats():
+    return jsonify(global_stats)
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
@@ -966,6 +970,7 @@ if __name__ == '__main__':
         import os
         port = int(os.environ.get("PORT", 10000))
         app.run(host='0.0.0.0', port=port)
+
 
 
 
