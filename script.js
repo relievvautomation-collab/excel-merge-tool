@@ -708,9 +708,7 @@ async function downloadMergedFile() {
         }, 100);
         
         // Update statistics
-        userData.totalSheetsMerged += (processingStats.tables || processingStats.sheets || 0);
-        userData.todaySheetsMerged += (processingStats.tables || processingStats.sheets || 0);
-        saveUserData();
+        await loadUserData();
         
         // Update modal with actual file size
         let actualSizeDisplay = '';
@@ -863,4 +861,5 @@ function showNotification(message, type = 'info') {
 // Initialize the application
 
 init();
+
 
