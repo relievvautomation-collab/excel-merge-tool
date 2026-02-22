@@ -648,162 +648,164 @@ def merge_files():
         
         session_id = str(uuid.uuid4())
         
-        all_sheets_data = []
-        total_tables = 0
-        total_rows = 0
-        total_columns = 0
-        sheet_names_info = {}
-        
-        # Process each file
+        # Save all uploaded files first
+        temp_paths = []
         for file in files:
             if not file or file.filename == '':
                 continue
-                
             if not allowed_file(file.filename):
                 return jsonify({'error': f'File {file.filename} has invalid extension', 'success': False}), 400
             
-            # Save file directly to persistent upload folder
             safe_filename = str(uuid.uuid4()) + "_" + file.filename
             temp_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
             file.save(temp_path)
+            temp_paths.append(temp_path)
+        
+        if not temp_paths:
+            return jsonify({'error': 'No valid files uploaded', 'success': False}), 400
+        
+        try:
+            print(f"Processing {len(temp_paths)} files in parallel...")
+            # Process all files in parallel using the imported function
+            all_sheets_data = read_excel_parallel(temp_paths)
             
-            try:
-                print(f"Processing: {file.filename}")
+            if not all_sheets_data:
+                return jsonify({'error': 'No data found in uploaded files. Please ensure files contain data and are in supported formats (.xlsx, .xls, .xlsm, .csv).', 'success': False}), 400
+            
+            # Compute totals and sheet info
+            total_tables = 0
+            total_rows = 0
+            total_columns = 0
+            sheet_names_info = {}
+            
+            for sheet_data in all_sheets_data:
+                sheet_name = sheet_data['sheet_name']
+                filename = sheet_data['filename']
+                key = f"{filename} - {sheet_name}"
                 
-                sheets_data = extract_file_data(temp_path, file.filename)
+                if key not in sheet_names_info:
+                    sheet_names_info[key] = {
+                        'filename': filename,
+                        'sheet_name': sheet_name,
+                        'table_count': 0,
+                        'row_count': 0,
+                        'column_count': 0
+                    }
                 
-                if sheets_data:
-                    for sheet_data in sheets_data:
-                        sheet_name = sheet_data['sheet_name']
-                        key = f"{file.filename} - {sheet_name}"
-                        
-                        all_sheets_data.append(sheet_data)
-                        
-                        if key not in sheet_names_info:
-                            sheet_names_info[key] = {
-                                'filename': file.filename,
-                                'sheet_name': sheet_name,
-                                'table_count': 0,
-                                'row_count': 0,
-                                'column_count': 0
-                            }
-                        
-                        for table_data in sheet_data['tables']:
-                            total_tables += 1
-                            df = table_data.get('dataframe', pd.DataFrame())
-                            
-                            sheet_row_count = len(df)
-                            sheet_column_count = len(df.columns)
-                            
-                            total_rows += sheet_row_count
-                            total_columns = max(total_columns, sheet_column_count)
-                            
-                            sheet_names_info[key]['table_count'] += 1
-                            sheet_names_info[key]['row_count'] += sheet_row_count
-                            sheet_names_info[key]['column_count'] = max(
-                                sheet_names_info[key]['column_count'], 
-                                sheet_column_count
-                            )
+                for table_data in sheet_data['tables']:
+                    total_tables += 1
+                    df = table_data.get('dataframe', pd.DataFrame())
                     
-                    print(f"  Found {len(sheets_data)} sheets with {total_tables} tables")
-                else:
-                    print(f"  No data found in {file.filename}")
+                    sheet_row_count = len(df)
+                    sheet_column_count = len(df.columns)
+                    
+                    total_rows += sheet_row_count
+                    total_columns = max(total_columns, sheet_column_count)
+                    
+                    sheet_names_info[key]['table_count'] += 1
+                    sheet_names_info[key]['row_count'] += sheet_row_count
+                    sheet_names_info[key]['column_count'] = max(
+                        sheet_names_info[key]['column_count'], 
+                        sheet_column_count
+                    )
+            
+            print(f"Total sheets found: {len(all_sheets_data)}")
+            print(f"Total tables found: {total_tables}")
+            
+            # Merge all data
+            try:
+                consolidated_df, header_data_list, merged_cells_list, sheet_info = merge_all_data(all_sheets_data)
+                
+                if consolidated_df.empty:
+                    return jsonify({'error': 'No data to merge after processing', 'success': False}), 400
+                
+                print(f"Merged data: {consolidated_df.shape[0]} rows, {consolidated_df.shape[1]} columns")
+                
+                # Prepare preview data
+                preview_data = []
+                preview_data.append(consolidated_df.columns.tolist())
+                
+                preview_rows = consolidated_df.head(100)
+                for _, row in preview_rows.iterrows():
+                    row_list = []
+                    for val in row.tolist():
+                        if isinstance(val, (np.integer, np.floating)):
+                            row_list.append(float(val) if isinstance(val, np.floating) else int(val))
+                        elif pd.isna(val):
+                            row_list.append('')
+                        else:
+                            row_list.append(val)
+                    preview_data.append(row_list)
+                
+                # Save output file
+                output_filename = f"merged_{session_id}.xlsx"
+                output_path = os.path.join(UPLOAD_FOLDER, output_filename)
+                
+                success = create_output_excel(
+                    consolidated_df, output_path, header_data_list, merged_cells_list
+                )
+                
+                if not success:
+                    return jsonify({'error': 'Failed to create output file', 'success': False}), 500
                 
             except Exception as e:
-                print(f"Error processing {file.filename}: {str(e)[:200]}")
-            finally:
-                # Clean up the uploaded file after processing
+                print(f"Error in merge process: {str(e)[:200]}")
+                traceback.print_exc()
+                return jsonify({'error': f'Error merging data: {str(e)[:200]}', 'success': False}), 500
+            
+            # Store file info
+            processed_files[session_id] = {
+                'filename': output_filename,
+                'path': output_path,
+                'created_at': datetime.now().isoformat(),
+                'stats': {
+                    'tables': total_tables,
+                    'rows': len(consolidated_df),
+                    'columns': len(consolidated_df.columns),
+                    'files': len(files)
+                },
+                'sheet_info': sheet_names_info
+            }
+
+            # Update global statistics (persisted)
+            global global_stats
+            today = datetime.now().strftime("%Y-%m-%d")
+            if global_stats["lastResetDate"] != today:
+                global_stats["todaySheetsMerged"] = 0
+                global_stats["lastResetDate"] = today
+
+            global_stats["totalSheetsMerged"] += total_tables
+            global_stats["todaySheetsMerged"] += total_tables
+            save_stats(global_stats)
+
+            return jsonify({
+                'success': True,
+                'download_id': session_id,
+                'data': {
+                    'consolidated': preview_data
+                },
+                'stats': {
+                    'tables': total_tables,
+                    'rows': len(consolidated_df),
+                    'columns': len(consolidated_df.columns),
+                    'files': len(files)
+                },
+                'sheet_info': sheet_names_info
+            })
+        
+        except Exception as e:
+            print(f"Error in parallel processing: {str(e)[:200]}")
+            traceback.print_exc()
+            return jsonify({'error': f'Error processing files: {str(e)[:200]}', 'success': False}), 500
+        
+        finally:
+            # Clean up uploaded files
+            for temp_path in temp_paths:
                 try:
                     if os.path.exists(temp_path):
                         os.remove(temp_path)
                 except:
                     pass
-        
-        if not all_sheets_data:
-            return jsonify({'error': 'No data found in uploaded files. Please ensure files contain data and are in supported formats (.xlsx, .xls, .xlsm, .csv).', 'success': False}), 400
-        
-        print(f"Total sheets found: {len(all_sheets_data)}")
-        print(f"Total tables found: {total_tables}")
-        
-        try:
-            consolidated_df, header_data_list, merged_cells_list, sheet_info = merge_all_data(all_sheets_data)
-            
-            if consolidated_df.empty:
-                return jsonify({'error': 'No data to merge after processing', 'success': False}), 400
-            
-            print(f"Merged data: {consolidated_df.shape[0]} rows, {consolidated_df.shape[1]} columns")
-            
-            # Prepare preview data
-            preview_data = []
-            preview_data.append(consolidated_df.columns.tolist())
-            
-            preview_rows = consolidated_df.head(100)
-            for _, row in preview_rows.iterrows():
-                row_list = []
-                for val in row.tolist():
-                    if isinstance(val, (np.integer, np.floating)):
-                        row_list.append(float(val) if isinstance(val, np.floating) else int(val))
-                    elif pd.isna(val):
-                        row_list.append('')
-                    else:
-                        row_list.append(val)
-                preview_data.append(row_list)
-            
-            # Save output file
-            output_filename = f"merged_{session_id}.xlsx"
-            output_path = os.path.join(UPLOAD_FOLDER, output_filename)
-            
-            success = create_output_excel(
-                consolidated_df, output_path, header_data_list, merged_cells_list
-            )
-            
-            if not success:
-                return jsonify({'error': 'Failed to create output file', 'success': False}), 500
-            
-        except Exception as e:
-            print(f"Error in merge process: {str(e)[:200]}")
-            traceback.print_exc()
-            return jsonify({'error': f'Error merging data: {str(e)[:200]}', 'success': False}), 500
-        
-        # Store file info
-        processed_files[session_id] = {
-            'filename': output_filename,
-            'path': output_path,
-            'created_at': datetime.now().isoformat(),
-            'stats': {
-                'tables': total_tables,
-                'rows': len(consolidated_df),
-                'columns': len(consolidated_df.columns),
-                'files': len([f for f in files if f])
-            },
-            'sheet_info': sheet_names_info
-        }
-
-        # Update global statistics (persisted)
-        global global_stats
-        today = datetime.now().strftime("%Y-%m-%d")
-        if global_stats["lastResetDate"] != today:
-            global_stats["todaySheetsMerged"] = 0
-            global_stats["lastResetDate"] = today
-
-        global_stats["totalSheetsMerged"] += total_tables
-        global_stats["todaySheetsMerged"] += total_tables
-        save_stats(global_stats)
-
-        return jsonify({
-            'success': True,
-            'download_id': session_id,
-            'data': {
-                'consolidated': preview_data
-            },
-            'stats': {
-                'tables': total_tables,
-                'rows': len(consolidated_df),
-                'columns': len(consolidated_df.columns),
-                'files': len([f for f in files if f])
-            },
-            'sheet_info': sheet_names_info
-        })
     
     except Exception as e:
         print(f"Error in merge endpoint: {str(e)[:200]}")
@@ -917,4 +919,3 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-
