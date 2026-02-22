@@ -63,7 +63,7 @@ function init() {
 // Load user data from backend API (cross‑device)
 async function loadUserData() {
     try {
-        const res = await fetch('/stats');
+        const res = await fetch('https://tool.relievv.in/stats');
         const data = await res.json();
         userData.totalSheetsMerged = data.totalSheetsMerged || 0;
         userData.todaySheetsMerged = data.todaySheetsMerged || 0;
@@ -286,7 +286,7 @@ async function mergeFiles() {
         
         // Send to Python backend
         progressFill.style.width = '30%';
-        const response = await fetch(API_BASE_URL + '/merge', {
+        const response = await fetch(API_BASE_URL + 'https://tool.relievv.in/merge', {
             method: 'POST',
             body: formData
         });
@@ -682,7 +682,7 @@ async function downloadMergedFile() {
         confirmDownload.disabled = true;
         
         // Download the merged file from Python backend
-        const response = await fetch(API_BASE_URL + '/download/' + sessionId);
+        const response = await fetch(API_BASE_URL + 'https://tool.relievv.in/download/' + sessionId);
         
         if (!response.ok) {
             throw new Error('Download failed');
@@ -860,3 +860,4 @@ function showNotification(message, type = 'info') {
 
 // Initialize the application
 init();
+
