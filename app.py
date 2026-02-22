@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
-import shutil
 from datetime import datetime
 from openpyxl import load_workbook, Workbook
 from openpyxl.utils import get_column_letter
@@ -22,11 +21,10 @@ CORS(app, origins=["*"])
 
 # Configuration
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
 ALLOWED_EXTENSIONS = {'xlsx', 'xls', 'xlsm', 'csv'}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
@@ -34,7 +32,7 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 # Store processed files temporarily
 processed_files = {}
 
-# Global statistics (cross‑device)
+# Global statistics (shared across all users)
 global_stats = {
     "totalSheetsMerged": 0,
     "todaySheetsMerged": 0,
@@ -607,7 +605,7 @@ def merge_files():
             if not allowed_file(file.filename):
                 return jsonify({'error': f'File {file.filename} has invalid extension', 'success': False}), 400
             
-            # Save file directly to UPLOAD_FOLDER with a unique name
+            # Save file directly to persistent upload folder
             safe_filename = str(uuid.uuid4()) + "_" + file.filename
             temp_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
             file.save(temp_path)
@@ -657,7 +655,7 @@ def merge_files():
             except Exception as e:
                 print(f"Error processing {file.filename}: {str(e)[:200]}")
             finally:
-                # Clean up the uploaded file
+                # Clean up the uploaded file after processing
                 try:
                     if os.path.exists(temp_path):
                         os.remove(temp_path)
