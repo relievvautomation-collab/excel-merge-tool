@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 import pandas as pd
 import numpy as np
 from flask import Flask, request, jsonify, send_file, send_from_directory
@@ -23,7 +24,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # ---------- GLOBAL ERROR HANDLERS (return JSON instead of HTML) ----------
 @app.errorhandler(RequestEntityTooLarge)
 def handle_file_too_large(e):
-    return jsonify({'error': 'File too large. Maximum size is 100MB.', 'success': False}), 413
+    return jsonify({'error': 'Total upload size exceeds 200MB limit. Please reduce file sizes.', 'success': False}), 413
 
 @app.errorhandler(404)
 def not_found(e):
@@ -46,7 +47,7 @@ def handle_unhandled_exception(e):
 # ---------- CONFIGURATION ----------
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 ALLOWED_EXTENSIONS = {'xlsx', 'xls', 'xlsm', 'csv'}
-MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB total request size
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -56,12 +57,33 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 # Store processed files temporarily
 processed_files = {}
 
-# Global statistics (shared across all users)
-global_stats = {
-    "totalSheetsMerged": 0,
-    "todaySheetsMerged": 0,
-    "lastResetDate": datetime.now().strftime("%Y-%m-%d")
-}
+# Statistics file for persistence
+STATS_FILE = os.path.join(os.getcwd(), 'stats.json')
+
+def load_stats():
+    """Load global statistics from JSON file."""
+    try:
+        if os.path.exists(STATS_FILE):
+            with open(STATS_FILE, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print("Could not load stats, using defaults:", e)
+    return {
+        "totalSheetsMerged": 0,
+        "todaySheetsMerged": 0,
+        "lastResetDate": datetime.now().strftime("%Y-%m-%d")
+    }
+
+def save_stats(stats):
+    """Save global statistics to JSON file."""
+    try:
+        with open(STATS_FILE, 'w') as f:
+            json.dump(stats, f)
+    except Exception as e:
+        print("Could not save stats:", e)
+
+# Global statistics (shared across all users, persisted)
+global_stats = load_stats()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -275,13 +297,19 @@ def read_excel_file_simple(file_path, filename):
         return []
 
 def read_csv_file_advanced(file_path, filename):
-    """Advanced CSV reader with encoding detection"""
+    """Advanced CSV reader with encoding detection and chunking for large files"""
     try:
         encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'utf-16-le', 'utf-16-be']
         
+        df = None
         for encoding in encodings:
             try:
-                df = pd.read_csv(file_path, encoding=encoding, dtype=str, on_bad_lines='skip')
+                # Use chunksize to handle large CSV files without loading everything into memory
+                chunks = []
+                for chunk in pd.read_csv(file_path, encoding=encoding, dtype=str, on_bad_lines='skip', chunksize=10000):
+                    chunks.append(chunk)
+                if chunks:
+                    df = pd.concat(chunks, ignore_index=True)
                 break
             except UnicodeDecodeError:
                 continue
@@ -289,11 +317,15 @@ def read_csv_file_advanced(file_path, filename):
                 continue
         else:
             try:
-                df = pd.read_csv(file_path, dtype=str, on_bad_lines='skip')
+                chunks = []
+                for chunk in pd.read_csv(file_path, dtype=str, on_bad_lines='skip', chunksize=10000):
+                    chunks.append(chunk)
+                if chunks:
+                    df = pd.concat(chunks, ignore_index=True)
             except:
                 return []
         
-        if df.empty:
+        if df is None or df.empty:
             return []
         
         df = df.fillna('')
@@ -629,7 +661,7 @@ def merge_files():
             if not allowed_file(file.filename):
                 return jsonify({'error': f'File {file.filename} has invalid extension', 'success': False}), 400
             
-            # Save file directly to persistent upload folder (no tempfile)
+            # Save file directly to persistent upload folder
             safe_filename = str(uuid.uuid4()) + "_" + file.filename
             temp_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
             file.save(temp_path)
@@ -746,7 +778,8 @@ def merge_files():
             'sheet_info': sheet_names_info
         }
 
-        # Update global statistics
+        # Update global statistics (persisted)
+        global global_stats
         today = datetime.now().strftime("%Y-%m-%d")
         if global_stats["lastResetDate"] != today:
             global_stats["todaySheetsMerged"] = 0
@@ -754,6 +787,7 @@ def merge_files():
 
         global_stats["totalSheetsMerged"] += total_tables
         global_stats["todaySheetsMerged"] += total_tables
+        save_stats(global_stats)
 
         return jsonify({
             'success': True,
@@ -882,4 +916,3 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-
