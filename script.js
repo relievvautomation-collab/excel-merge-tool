@@ -49,8 +49,8 @@ const totalSheetsCounter = document.getElementById('totalSheetsCounter');
 const todaySheetsCounter = document.getElementById('todaySheetsCounter');
 const currentDate = document.getElementById('currentDate');
 
-// API endpoint – empty for relative paths on production
-const API_BASE_URL = '';
+// API endpoint – use your custom domain
+const API_BASE_URL = 'https://tool.relievv.in';
 
 // Initialize
 function init() {
@@ -63,13 +63,13 @@ function init() {
 // Load user data from backend API (cross‑device)
 async function loadUserData() {
     try {
-        const res = await fetch('https://tool.relievv.in/stats');
+        const res = await fetch(API_BASE_URL + '/stats');
         const data = await res.json();
         userData.totalSheetsMerged = data.totalSheetsMerged || 0;
         userData.todaySheetsMerged = data.todaySheetsMerged || 0;
         updateStatisticsCounters();
     } catch(e) {
-        console.log("Stats fetch failed");
+        console.log("Stats fetch failed", e);
     }
 }
 
@@ -286,7 +286,7 @@ async function mergeFiles() {
         
         // Send to Python backend
         progressFill.style.width = '30%';
-        const response = await fetch(API_BASE_URL + 'https://tool.relievv.in/merge', {
+        const response = await fetch(API_BASE_URL + '/merge', {
             method: 'POST',
             body: formData
         });
@@ -682,7 +682,7 @@ async function downloadMergedFile() {
         confirmDownload.disabled = true;
         
         // Download the merged file from Python backend
-        const response = await fetch(API_BASE_URL + 'https://tool.relievv.in/download/' + sessionId);
+        const response = await fetch(API_BASE_URL + '/download/' + sessionId);
         
         if (!response.ok) {
             throw new Error('Download failed');
@@ -860,4 +860,3 @@ function showNotification(message, type = 'info') {
 
 // Initialize the application
 init();
-
