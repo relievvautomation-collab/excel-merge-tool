@@ -836,10 +836,6 @@ def merge_files():
             
         global_stats["totalSheetsMerged"] += total_tables
         global_stats["todaySheetsMerged"] += total_tables
-
-        return jsonify({
-            'success': True,
-            'download_id': session_id,
         
         return jsonify({
             'success': True,
@@ -970,6 +966,7 @@ if __name__ == '__main__':
         import os
         port = int(os.environ.get("PORT", 10000))
         app.run(host='0.0.0.0', port=port)
+
 
 
 
