@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: excel-merge-tool
+    env: python
+    plan: starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app -c gunicorn.conf.py --worker-tmp-dir /dev/shm"
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "true"
