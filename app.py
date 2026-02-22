@@ -22,7 +22,11 @@ app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app, origins=["*"])
 
 # Configuration
-UPLOAD_FOLDER = 'uploads'
+import os
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
+
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 ALLOWED_EXTENSIONS = {'xlsx', 'xls', 'xlsm', 'csv'}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
@@ -939,4 +943,5 @@ if __name__ == '__main__':
         import os
         port = int(os.environ.get("PORT", 10000))
         app.run(host='0.0.0.0', port=port)
+
 
