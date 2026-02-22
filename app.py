@@ -38,6 +38,12 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 # Store processed files temporarily
 processed_files = {}
 
+global_stats = {
+    "totalSheetsMerged": 0,
+    "todaySheetsMerged": 0,
+    "lastResetDate": datetime.now().strftime("%Y-%m-%d")
+}
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -947,6 +953,7 @@ if __name__ == '__main__':
         import os
         port = int(os.environ.get("PORT", 10000))
         app.run(host='0.0.0.0', port=port)
+
 
 
 
