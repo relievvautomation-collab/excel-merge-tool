@@ -49,7 +49,7 @@ const totalSheetsCounter = document.getElementById('totalSheetsCounter');
 const todaySheetsCounter = document.getElementById('todaySheetsCounter');
 const currentDate = document.getElementById('currentDate');
 
-// API endpoint
+// API endpoint – empty for relative paths on production
 const API_BASE_URL = '';
 
 // Initialize
@@ -60,7 +60,7 @@ function init() {
     updateCurrentDate();
 }
 
-// Load user data from localStorage
+// Load user data from backend API (cross‑device)
 async function loadUserData() {
     try {
         const res = await fetch('/stats');
@@ -707,7 +707,7 @@ async function downloadMergedFile() {
             URL.revokeObjectURL(url);
         }, 100);
         
-        // Update statistics
+        // Update statistics from backend after successful download
         await loadUserData();
         
         // Update modal with actual file size
@@ -859,7 +859,4 @@ function showNotification(message, type = 'info') {
 }
 
 // Initialize the application
-
 init();
-
-
