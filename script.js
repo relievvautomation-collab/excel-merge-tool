@@ -50,7 +50,7 @@ const todaySheetsCounter = document.getElementById('todaySheetsCounter');
 const currentDate = document.getElementById('currentDate');
 
 // API endpoint
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = '';
 
 // Initialize
 function init() {
@@ -876,4 +876,5 @@ function showNotification(message, type = 'info') {
 }
 
 // Initialize the application
+
 init();
