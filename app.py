@@ -18,7 +18,7 @@ from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 warnings.filterwarnings('ignore')
 
 app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app, origins=["*"])
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # ---------- GLOBAL ERROR HANDLERS (return JSON instead of HTML) ----------
 @app.errorhandler(RequestEntityTooLarge)
@@ -882,3 +882,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+
