@@ -987,6 +987,7 @@ body {
     z-index: 100;
     border: 2px solid var(--accent-blue);
     min-width: 250px;
+    display: none;
     animation: slideInRight 0.3s ease;
 }
 
