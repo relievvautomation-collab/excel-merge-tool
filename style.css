@@ -691,8 +691,8 @@ body {
 } */
 
 .faq-item {
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
+   margin-bottom: 1rem;
+    padding-bottom: 0;
     border-bottom: 1px solid var(--border-blue);
 }
 
@@ -1174,3 +1174,4 @@ body {
         margin-left: 1.5rem;
     }
 }
+
