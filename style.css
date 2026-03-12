@@ -1,7 +1,7 @@
 :root {
     --primary-blue: #1e3c72;
     --secondary-blue: #2a5298;
-    --accent-blue: #4a7dff;
+    --accent-blue: #064a9c;
     --light-blue: #f0f5ff;
     --lighter-blue: #f9fbff;
     --border-blue: #d0ddff;
@@ -16,13 +16,18 @@
     --star-color: #ffc107;
     --star-empty: #e0e0e0;
 }
+.btn-secondary:hover{color: var(--accent-blue) !important;}
 
+.bacckground-back-vl{background: linear-gradient(135deg, #2a5298 0%, #004698 100%) !important; 
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.15) 1px, transparent 1px), linear-gradient(135deg, #2a5298 0%, #02499d 100%) !important;
+    background-size: 30px 30px, 100% 100% !important;
+    background-size: 30px 30px, 100% 100% !important;
+    background-position: 0 0, 0 0 !important;}
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    font-family: 'Roboto', sans-serif;
 }
 
 body {
@@ -65,11 +70,16 @@ body {
 }
 
 .logo-icon {
-    font-size: 2.5rem;
+    font-size: 2rem;
     margin-right: 1rem;
     background: rgba(255, 255, 255, 0.1);
-    padding: 0.8rem;
-    border-radius: 12px;
+     
+    border-radius: 20px;
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .logo-text h1 {
@@ -225,7 +235,7 @@ body {
 
 .summary-card {
     background: white;
-    border-radius: 10px;
+    border-radius: 0;
     padding: 1.8rem;
     box-shadow: 0 4px 12px var(--shadow-light);
     display: flex;
@@ -364,7 +374,7 @@ body {
 /* Preview Section */
 .preview-section {
     background: white;
-    border-radius: 12px;
+    border-radius: 0;
     box-shadow: 0 4px 16px var(--shadow-light);
     overflow: hidden;
     display: flex;
@@ -570,7 +580,7 @@ body {
 /* Info Panel */
 .info-panel {
     background: white;
-    border-radius: 12px;
+    border-radius: 0;
     box-shadow: 0 4px 16px var(--shadow-light);
     overflow: hidden;
     border: 1px solid #f0f0f0;
@@ -676,9 +686,9 @@ body {
 }
 
 /* FAQ Container */
-.faq-container {
+/* .faq-container {
     padding: 2rem;
-}
+} */
 
 .faq-item {
     margin-bottom: 2rem;
@@ -721,7 +731,7 @@ body {
     line-height: 1.6;
     margin-left: 2.5rem;
     padding-left: 0.5rem;
-    border-left: 3px solid var(--light-blue);
+    /* border-left: 3px solid var(--light-blue); */
 }
 
 .faq-item ul {
