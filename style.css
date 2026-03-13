@@ -18,11 +18,13 @@
 }
 .btn-secondary:hover{color: var(--accent-blue) !important;}
 
-.bacckground-back-vl{background: linear-gradient(135deg, #2a5298 0%, #004698 100%) !important; 
+.bacckground-back-vl{
+    background: linear-gradient(135deg, #2a5298 0%, #004698 100%) !important; 
     background-image: radial-gradient(circle, rgba(255, 255, 255, 0.15) 1px, transparent 1px), linear-gradient(135deg, #2a5298 0%, #02499d 100%) !important;
     background-size: 30px 30px, 100% 100% !important;
     background-size: 30px 30px, 100% 100% !important;
-    background-position: 0 0, 0 0 !important;}
+    background-position: 0 0, 0 0 !important;
+}
 * {
     margin: 0;
     padding: 0;
@@ -202,7 +204,11 @@ body {
 }
 
 .upload-button {
-    background: var(--accent-blue);
+    background: linear-gradient(135deg, #2a5298 0%, #004698 100%) !important; 
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.15) 1px, transparent 1px), linear-gradient(135deg, #2a5298 0%, #02499d 100%) !important;
+    background-size: 30px 30px, 100% 100% !important;
+    background-size: 30px 30px, 100% 100% !important;
+    background-position: 0 0, 0 0 !important;
     color: white;
     border: none;
     padding: 1rem 2.5rem;
@@ -756,7 +762,7 @@ body {
 }
 
 /* Modal */
-.modal-overlay {
+.modal-overlays {
     position: fixed;
     top: 0;
     left: 0;
@@ -771,9 +777,9 @@ body {
     animation: fadeIn 0.3s ease;
 }
 
-.modal {
+.modals {
     background: white;
-    border-radius: 12px;
+    border-radius: 0px;
     width: 100%;
     max-width: 700px;
     max-height: 90vh;
@@ -793,17 +799,17 @@ body {
     }
 }
 
-.modal-header {
+.modal-headers {
     background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
     color: white;
     padding: 1.8rem;
-    border-radius: 12px 12px 0 0;
+    border-radius:  0;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.modal-header h2 {
+.modal-headers h2 {
     font-size: 1.5rem;
     display: flex;
     align-items: center;
@@ -829,7 +835,7 @@ body {
     background: rgba(255, 255, 255, 0.3);
 }
 
-.modal-body {
+.modal-bodys {
     padding: 2rem;
 }
 
