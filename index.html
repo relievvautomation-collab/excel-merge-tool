@@ -11,14 +11,14 @@
 
     <style>
         .container{max-width: 1500px;}
-        .nav-link{font-weight: 500;}
-       </style>
+        .nav-link{font-weight: 500 !important; color: var(--text-dark);} 
+    </style>
 </head>
 <body>
     <div class="app-container">
 <div class="container">
     
-    <header class="position-sticky top-0" style="z-index: 9999; border-bottom: 1px solid #d6d6d6;">
+    <header class="position-sticky top-0" style="z-index: 999; border-bottom: 1px solid #d6d6d6;">
         <!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-light bg-white">
     <div class="container">
@@ -321,13 +321,13 @@
 </div>
 
 <!-- Download Modal -->
-<div class="modal-overlay" id="reportModal">
-    <div class="modal">
-        <div class="modal-header">
+<div class="modal-overlays" id="reportModal">
+    <div class="modals">
+        <div class="modal-headers">
             <h2><i class="fas fa-file-download"></i> Download Merged Excel File</h2>
-            <button class="close-modal" id="closeModal">&times;</button>
+            <button class="close-modal" id="closeModal"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-bodys">
             <div class="summary-grid">
                 <div class="summary-item">
                     <div class="summary-label">Files Selected</div>
