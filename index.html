@@ -388,145 +388,154 @@
     <!-- =============================================
          GA4 EVENT TRACKING — DO NOT MODIFY ABOVE
          ============================================= -->
+      <!-- =============================================
+         UPLOAD COUNTER (localStorage) + GA4 EVENTS
+         ============================================= -->
     <script>
     (function () {
-
-        // 1. FILE UPLOAD — via Browse Button
-        document.getElementById('browseButton').addEventListener('click', function () {
-            gtag('event', 'browse_button_click', {
-                event_category: 'File Upload',
-                event_label: 'Browse Files Button'
-            });
-        });
-
-        // 2. FILE SELECTED — tracks how many files chosen
+ 
+        /* ─── localStorage counter helpers ─── */
+        var TODAY = new Date().toISOString().slice(0, 10);
+ 
+        function ucGet(k, def) { var v = localStorage.getItem(k); return v !== null ? v : def; }
+        function ucSet(k, v)   { localStorage.setItem(k, String(v)); }
+        function ucInt(k)      { return parseInt(ucGet(k, 0)) || 0; }
+ 
+        // Auto-reset today's counters on a new day
+        if (ucGet('uc_today_date', '') !== TODAY) {
+            ucSet('uc_today_date', TODAY);
+            ucSet('uc_today_sessions', 0);
+            ucSet('uc_today_files', 0);
+        }
+ 
+        function ucRender() {
+            document.getElementById('uc-total-sessions').textContent  = ucInt('uc_total_sessions').toLocaleString();
+            document.getElementById('uc-total-files').textContent     = ucInt('uc_total_files').toLocaleString();
+            document.getElementById('uc-today-sessions').textContent  = ucInt('uc_today_sessions').toLocaleString();
+            document.getElementById('uc-today-files').textContent     = ucInt('uc_today_files').toLocaleString();
+            document.getElementById('uc-total-merges').textContent    = ucInt('uc_total_merges').toLocaleString();
+            document.getElementById('uc-total-downloads').textContent = ucInt('uc_total_downloads').toLocaleString();
+            document.getElementById('uc-today-date').textContent      = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        ucRender();
+ 
+        function incUpload(n) {
+            ucSet('uc_total_sessions', ucInt('uc_total_sessions') + 1);
+            ucSet('uc_total_files',    ucInt('uc_total_files')    + n);
+            ucSet('uc_today_sessions', ucInt('uc_today_sessions') + 1);
+            ucSet('uc_today_files',    ucInt('uc_today_files')    + n);
+            ucRender();
+        }
+        function incMerge()    { ucSet('uc_total_merges',    ucInt('uc_total_merges')    + 1); ucRender(); }
+        function incDownload() { ucSet('uc_total_downloads', ucInt('uc_total_downloads') + 1); ucRender(); }
+ 
+        /* ─── File input (Browse) ─── */
         document.getElementById('fileInput').addEventListener('change', function () {
-            var fileCount = this.files.length;
-            gtag('event', 'file_selected', {
-                event_category: 'File Upload',
-                event_label: 'Files Selected',
-                value: fileCount
-            });
+            var n = this.files.length;
+            if (n > 0) {
+                incUpload(n);
+                gtag('event', 'file_selected', { event_category: 'File Upload', event_label: 'Files Selected', value: n });
+            }
         });
-
-        // 3. DRAG & DROP — file dropped on upload area
-        document.getElementById('uploadArea').addEventListener('drop', function () {
-            gtag('event', 'file_drag_drop', {
-                event_category: 'File Upload',
-                event_label: 'Drag and Drop Upload'
-            });
+ 
+        /* ─── Drag & Drop ─── */
+        document.getElementById('uploadArea').addEventListener('drop', function (e) {
+            var n = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files.length : 0;
+            if (n > 0) {
+                incUpload(n);
+                gtag('event', 'file_drag_drop', { event_category: 'File Upload', event_label: 'Drag and Drop Upload', value: n });
+            }
         });
-
-        // 4. MERGE BUTTON CLICK
+ 
+        /* ─── Browse button (GA4 only) ─── */
+        document.getElementById('browseButton').addEventListener('click', function () {
+            gtag('event', 'browse_button_click', { event_category: 'File Upload', event_label: 'Browse Files Button' });
+        });
+ 
+        /* ─── Merge button ─── */
         document.getElementById('mergeBtn').addEventListener('click', function () {
-            var fileCount = parseInt(document.getElementById('summaryFileCount').innerText) || 0;
-            gtag('event', 'merge_files_click', {
-                event_category: 'Tool Action',
-                event_label: 'Merge Files Button',
-                value: fileCount
-            });
+            incMerge();
+            var fc = parseInt(document.getElementById('summaryFileCount').innerText) || 0;
+            gtag('event', 'merge_files_click', { event_category: 'Tool Action', event_label: 'Merge Files Button', value: fc });
         });
-
-        // 5. RESET BUTTON CLICK
+ 
+        /* ─── Reset tool button ─── */
         document.getElementById('resetBtn').addEventListener('click', function () {
-            gtag('event', 'reset_tool_click', {
-                event_category: 'Tool Action',
-                event_label: 'Reset Tool Button'
-            });
+            gtag('event', 'reset_tool_click', { event_category: 'Tool Action', event_label: 'Reset Tool Button' });
         });
-
-        // 6. DOWNLOAD BUTTON CLICK (opens modal)
+ 
+        /* ─── Download button (opens modal) ─── */
         document.getElementById('downloadBtn').addEventListener('click', function () {
-            gtag('event', 'download_button_click', {
-                event_category: 'Download',
-                event_label: 'Download Button Opened Modal'
-            });
+            gtag('event', 'download_button_click', { event_category: 'Download', event_label: 'Download Button Opened Modal' });
         });
-
-        // 7. CONFIRM DOWNLOAD — inside modal
+ 
+        /* ─── Confirm download ─── */
         document.getElementById('confirmDownload').addEventListener('click', function () {
-            var rows = parseInt(document.getElementById('modalRowCount').innerText) || 0;
+            incDownload();
+            var rows  = parseInt(document.getElementById('modalRowCount').innerText)  || 0;
             var files = parseInt(document.getElementById('modalFileCount').innerText) || 0;
-            gtag('event', 'file_downloaded', {
-                event_category: 'Download',
-                event_label: 'Confirmed Download',
-                value: rows,
-                files_merged: files
-            });
+            gtag('event', 'file_downloaded', { event_category: 'Download', event_label: 'Confirmed Download', value: rows, files_merged: files });
         });
-
-        // 8. SHEET / VIEW SELECTOR CHANGE
+ 
+        /* ─── Sheet selector ─── */
         document.getElementById('sheetSelect').addEventListener('change', function () {
-            gtag('event', 'sheet_view_changed', {
-                event_category: 'Preview',
-                event_label: 'Sheet Selector',
-                selected_view: this.value
-            });
+            gtag('event', 'sheet_view_changed', { event_category: 'Preview', event_label: 'Sheet Selector', selected_view: this.value });
         });
-
-        // 9. INFO TABS CLICK (Features / Performance / Notes)
+ 
+        /* ─── Info tabs ─── */
         document.querySelectorAll('.info-tab').forEach(function (tab) {
             tab.addEventListener('click', function () {
-                gtag('event', 'info_tab_click', {
-                    event_category: 'Engagement',
-                    event_label: 'Info Tab: ' + this.innerText.trim()
-                });
+                gtag('event', 'info_tab_click', { event_category: 'Engagement', event_label: 'Info Tab: ' + this.innerText.trim() });
             });
         });
-
-        // 10. NAVBAR LINK CLICKS
+ 
+        /* ─── Navbar links ─── */
         document.querySelectorAll('.nav-link').forEach(function (link) {
             link.addEventListener('click', function () {
-                gtag('event', 'navbar_click', {
-                    event_category: 'Navigation',
-                    event_label: this.innerText.trim(),
-                    link_url: this.href
-                });
+                gtag('event', 'navbar_click', { event_category: 'Navigation', event_label: this.innerText.trim(), link_url: this.href });
             });
         });
-
-        // 11. FOOTER LINK CLICKS (Help / Contact / Privacy)
+ 
+        /* ─── Footer links ─── */
         document.querySelectorAll('.footer-links a').forEach(function (link) {
             link.addEventListener('click', function () {
-                gtag('event', 'footer_link_click', {
-                    event_category: 'Navigation',
-                    event_label: this.innerText.trim(),
-                    link_url: this.href
-                });
+                gtag('event', 'footer_link_click', { event_category: 'Navigation', event_label: this.innerText.trim(), link_url: this.href });
             });
         });
-
-        // 12. SCROLL DEPTH — 25%, 50%, 75%, 90%
+ 
+        /* ─── Scroll depth ─── */
         var scrollMarks = { 25: false, 50: false, 75: false, 90: false };
         window.addEventListener('scroll', function () {
-            var scrolled = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
-            Object.keys(scrollMarks).forEach(function (mark) {
-                if (!scrollMarks[mark] && scrolled >= mark) {
-                    scrollMarks[mark] = true;
-                    gtag('event', 'scroll_depth', {
-                        event_category: 'Engagement',
-                        event_label: 'Scrolled ' + mark + '%',
-                        value: parseInt(mark)
-                    });
+            var pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+            Object.keys(scrollMarks).forEach(function (m) {
+                if (!scrollMarks[m] && pct >= m) {
+                    scrollMarks[m] = true;
+                    gtag('event', 'scroll_depth', { event_category: 'Engagement', event_label: 'Scrolled ' + m + '%', value: parseInt(m) });
                 }
             });
         });
-
-        // 13. TIME ON PAGE — fires at 30s, 60s, 120s
-        [30, 60, 120].forEach(function (seconds) {
+ 
+        /* ─── Time on page ─── */
+        [30, 60, 120].forEach(function (s) {
             setTimeout(function () {
-                gtag('event', 'time_on_page', {
-                    event_category: 'Engagement',
-                    event_label: seconds + ' seconds on page',
-                    value: seconds
-                });
-            }, seconds * 1000);
+                gtag('event', 'time_on_page', { event_category: 'Engagement', event_label: s + ' seconds on page', value: s });
+            }, s * 1000);
         });
-
+ 
+        /* ─── Reset counter button ─── */
+        document.getElementById('uc-reset-btn').addEventListener('click', function () {
+            if (confirm('Reset all upload counters on this device?')) {
+                ['uc_total_sessions','uc_total_files','uc_today_sessions',
+                 'uc_today_files','uc_total_merges','uc_total_downloads','uc_today_date']
+                .forEach(function (k) { localStorage.removeItem(k); });
+                ucRender();
+            }
+        });
+ 
     })();
     </script>
     <!-- =============================================
-         END GA4 EVENT TRACKING
+         END UPLOAD COUNTER + GA4 TRACKING
          ============================================= -->
 
 </body>
