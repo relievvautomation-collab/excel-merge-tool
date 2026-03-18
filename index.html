@@ -384,9 +384,150 @@
 </div>
     <script src="script.js"></script>
     <script src="bootstrap.min.js"> </script>
+
+    <!-- =============================================
+         GA4 EVENT TRACKING — DO NOT MODIFY ABOVE
+         ============================================= -->
+    <script>
+    (function () {
+
+        // 1. FILE UPLOAD — via Browse Button
+        document.getElementById('browseButton').addEventListener('click', function () {
+            gtag('event', 'browse_button_click', {
+                event_category: 'File Upload',
+                event_label: 'Browse Files Button'
+            });
+        });
+
+        // 2. FILE SELECTED — tracks how many files chosen
+        document.getElementById('fileInput').addEventListener('change', function () {
+            var fileCount = this.files.length;
+            gtag('event', 'file_selected', {
+                event_category: 'File Upload',
+                event_label: 'Files Selected',
+                value: fileCount
+            });
+        });
+
+        // 3. DRAG & DROP — file dropped on upload area
+        document.getElementById('uploadArea').addEventListener('drop', function () {
+            gtag('event', 'file_drag_drop', {
+                event_category: 'File Upload',
+                event_label: 'Drag and Drop Upload'
+            });
+        });
+
+        // 4. MERGE BUTTON CLICK
+        document.getElementById('mergeBtn').addEventListener('click', function () {
+            var fileCount = parseInt(document.getElementById('summaryFileCount').innerText) || 0;
+            gtag('event', 'merge_files_click', {
+                event_category: 'Tool Action',
+                event_label: 'Merge Files Button',
+                value: fileCount
+            });
+        });
+
+        // 5. RESET BUTTON CLICK
+        document.getElementById('resetBtn').addEventListener('click', function () {
+            gtag('event', 'reset_tool_click', {
+                event_category: 'Tool Action',
+                event_label: 'Reset Tool Button'
+            });
+        });
+
+        // 6. DOWNLOAD BUTTON CLICK (opens modal)
+        document.getElementById('downloadBtn').addEventListener('click', function () {
+            gtag('event', 'download_button_click', {
+                event_category: 'Download',
+                event_label: 'Download Button Opened Modal'
+            });
+        });
+
+        // 7. CONFIRM DOWNLOAD — inside modal
+        document.getElementById('confirmDownload').addEventListener('click', function () {
+            var rows = parseInt(document.getElementById('modalRowCount').innerText) || 0;
+            var files = parseInt(document.getElementById('modalFileCount').innerText) || 0;
+            gtag('event', 'file_downloaded', {
+                event_category: 'Download',
+                event_label: 'Confirmed Download',
+                value: rows,
+                files_merged: files
+            });
+        });
+
+        // 8. SHEET / VIEW SELECTOR CHANGE
+        document.getElementById('sheetSelect').addEventListener('change', function () {
+            gtag('event', 'sheet_view_changed', {
+                event_category: 'Preview',
+                event_label: 'Sheet Selector',
+                selected_view: this.value
+            });
+        });
+
+        // 9. INFO TABS CLICK (Features / Performance / Notes)
+        document.querySelectorAll('.info-tab').forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                gtag('event', 'info_tab_click', {
+                    event_category: 'Engagement',
+                    event_label: 'Info Tab: ' + this.innerText.trim()
+                });
+            });
+        });
+
+        // 10. NAVBAR LINK CLICKS
+        document.querySelectorAll('.nav-link').forEach(function (link) {
+            link.addEventListener('click', function () {
+                gtag('event', 'navbar_click', {
+                    event_category: 'Navigation',
+                    event_label: this.innerText.trim(),
+                    link_url: this.href
+                });
+            });
+        });
+
+        // 11. FOOTER LINK CLICKS (Help / Contact / Privacy)
+        document.querySelectorAll('.footer-links a').forEach(function (link) {
+            link.addEventListener('click', function () {
+                gtag('event', 'footer_link_click', {
+                    event_category: 'Navigation',
+                    event_label: this.innerText.trim(),
+                    link_url: this.href
+                });
+            });
+        });
+
+        // 12. SCROLL DEPTH — 25%, 50%, 75%, 90%
+        var scrollMarks = { 25: false, 50: false, 75: false, 90: false };
+        window.addEventListener('scroll', function () {
+            var scrolled = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+            Object.keys(scrollMarks).forEach(function (mark) {
+                if (!scrollMarks[mark] && scrolled >= mark) {
+                    scrollMarks[mark] = true;
+                    gtag('event', 'scroll_depth', {
+                        event_category: 'Engagement',
+                        event_label: 'Scrolled ' + mark + '%',
+                        value: parseInt(mark)
+                    });
+                }
+            });
+        });
+
+        // 13. TIME ON PAGE — fires at 30s, 60s, 120s
+        [30, 60, 120].forEach(function (seconds) {
+            setTimeout(function () {
+                gtag('event', 'time_on_page', {
+                    event_category: 'Engagement',
+                    event_label: seconds + ' seconds on page',
+                    value: seconds
+                });
+            }, seconds * 1000);
+        });
+
+    })();
+    </script>
+    <!-- =============================================
+         END GA4 EVENT TRACKING
+         ============================================= -->
+
 </body>
-
 </html>
-
-
-
